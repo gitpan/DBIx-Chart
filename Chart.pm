@@ -4,6 +4,9 @@
 #
 #	History:
 #
+#	2002-11-09		D. Arnold
+#		Add fetch() method (bug duh on my part).
+#
 #	2002-09-10		D. Arnold
 #		Coded.
 #
@@ -13,7 +16,7 @@ use DBI 1.27;
 use DBD::Chart 0.80;
 
 BEGIN {
-$DBIx::Chart::VERSION = '0.01';
+$DBIx::Chart::VERSION = '0.02';
 }
 #
 #	immediately grab a DBD::Chart handle for our use
@@ -583,6 +586,14 @@ sub fetchrow_array {
     return $sth->{_chart_sth} ? 
     	$sth->{_chart_sth}->SUPER::fetchrow_array(@args) :
     	$sth->SUPER::fetchrow_array(@args);
+}
+
+sub fetch {
+    my($sth, @args) = @_;
+
+    return $sth->{_chart_sth} ? 
+    	$sth->{_chart_sth}->SUPER::fetch(@args) :
+    	$sth->SUPER::fetch(@args);
 }
 
 sub fetchrow_arrayref {
