@@ -4,8 +4,10 @@
 #
 #	History:
 #
-#	2002-11-09		D. Arnold
-#		Add fetch() method (bug duh on my part).
+#	2005-01-26		D. Arnold
+#		- added fetch() alias
+#		- added state() functions
+#		- improved err/errstr/state retrieval
 #
 #	2002-09-10		D. Arnold
 #		Coded.
@@ -16,7 +18,7 @@ use DBI 1.27;
 use DBD::Chart 0.80;
 
 BEGIN {
-$DBIx::Chart::VERSION = '0.02';
+$DBIx::Chart::VERSION = '0.03';
 }
 #
 #	immediately grab a DBD::Chart handle for our use
@@ -132,9 +134,7 @@ sub selectcol_arrayref {
 #
 		Carp::croak('Invalid column number.') if $dbh->{RaiseError};
 		Carp::carp('Invalid column number.') if $dbh->{PrintError};
-    	$dbh->{err} = -1,
-    	$dbh->{errstr} = 'Invalid column number.',
-    	return undef
+    	return $dbh->SUPER::set_err(-1, 'Invalid column number.', 'S1000')
     		unless (($_ == 1) || ($_ == 2));
     }
 #
@@ -337,9 +337,7 @@ sub _chart_parse_sql {
 		my $imagemap = $1;
 		my $global_props = $2;
 
-		$dbh->{err} = -1,
-		$dbh->{errstr} = 'Composite image must use SELECT *.',
-		$dbh->{sqlstate} = 'S1000'
+		return $dbh->SUPER::set_err(-1, 'Composite image must use SELECT *.', 'S1000')
 			unless ($sql=~/^\s*SELECT\s+\*\s+FROM\s+(.+)$/si);
 		$remnant = $1;
 #
@@ -447,12 +445,17 @@ sub _chart_restore_phs {
 
 sub err {
 	my ($dbh) = @_;
-	return $dbh->{err};
+	return $dbh->SUPER::err;
 }
 
 sub errstr {
 	my ($dbh) = @_;
-	return $dbh->{errstr};
+	return $dbh->SUPER::errstr;
+}
+
+sub state {
+	my ($dbh) = @_;
+	return $dbh->SUPER::state;
 }
 
 no strict 'vars';
@@ -479,9 +482,7 @@ sub bind_param {
 	}
 #
 #	if we get here, its not a recognized PH
-	$sth->{err} = -1;
-	$sth->{errstr} = 'Invalid parameter number.';
-	return undef;
+	return $sth->SUPER::set_err(-1, 'Invalid parameter number.', 'S1000');
 }
 
 #
@@ -509,9 +510,9 @@ sub execute {
 				foreach (@{$src_phs->[$i]});
 		}
 		$rc = $src_sths->[$i]->SUPER::execute(@exec_parms);
-		$sth->{err} = $src_sths->[$i]->SUPER::err,
-		$sth->{errstr} = $src_sths->[$i]->SUPER::errstr,
-		return undef 
+		return $sth->SUPER::set_err($src_sths->[$i]->SUPER::err,
+			$src_sths->[$i]->SUPER::errstr,
+			$src_sths->[$i]->SUPER::state)
 			unless $rc;
 #
 #	fill out our param list w/ sths to simplify the chart ph mapping
@@ -527,9 +528,9 @@ sub execute {
 	$exec_parms[$_] =  $args[$chart_phs->[$_]]
 		foreach (0..$#$chart_phs);
 
-	$sth->{err} = $sth->{_chart_sth}->SUPER::err,
-	$sth->{errstr} = $sth->{_chart_sth}->SUPER::errstr,
-	return undef
+	return $sth->SUPER::set_err($sth->{_chart_sth}->SUPER::err,
+		$sth->{_chart_sth}->SUPER::errstr,
+		$sth->{_chart_sth}->SUPER::state)
 		unless $sth->{_chart_sth}->SUPER::execute(@exec_parms);
 		
 	return 1;
@@ -588,14 +589,6 @@ sub fetchrow_array {
     	$sth->SUPER::fetchrow_array(@args);
 }
 
-sub fetch {
-    my($sth, @args) = @_;
-
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::fetch(@args) :
-    	$sth->SUPER::fetch(@args);
-}
-
 sub fetchrow_arrayref {
     my($sth, @args) = @_;
 
@@ -603,6 +596,7 @@ sub fetchrow_arrayref {
     	$sth->{_chart_sth}->SUPER::fetchrow_arrayref(@args) :
     	$sth->SUPER::fetchrow_arrayref(@args);
 }
+*fetch = \&fetchrow_arrayref;
 
 sub fetchrow_hashref {
     my($sth, @args) = @_;
@@ -655,7 +649,7 @@ sub func {
 sub finish {
     my($sth, @args) = @_;
 
-    return $sth->SUPER::fetch(@args) unless $sth->{_chart_sth};
+    return $sth->SUPER::finish(@args) unless $sth->{_chart_sth};
 #
 #	finish each of our subordinate sths
 #
@@ -666,12 +660,17 @@ sub finish {
 
 sub err {
 	my ($sth) = @_;
-	return $sth->{err};
+	return $sth->SUPER::err;
 }
 
 sub errstr {
 	my ($sth) = @_;
-	return $sth->{errstr};
+	return $sth->SUPER::errstr;
+}
+
+sub state {
+	my ($sth) = @_;
+	return $sth->SUPER::state;
 }
 
 sub DESTROY { }
