@@ -4,7 +4,7 @@ use DBI qw(:sql_types);
 $|=1;
 $^W=1;
 
-BEGIN { $tests = 45 }
+BEGIN { $tests = 46 }
 
 print "1..$tests\n";
 
@@ -929,7 +929,34 @@ select * from
     AND MAPNAME='multwidth'
     AND MAPURL='http://www.gowi.com/cgi-bin/sample.pl?x=:X&y=:Y&z=:Z&plotno=:PLOTNUM'
     AND MAPTYPE='HTML'
-</pre></td></tr></table>
+</pre></td></tr>
+<tr><td valign=top align=center><img src=srcphs.png alt='srcphs'></td>
+<td valign=top align=left><pre>
+select
+	capturedt, 
+    tblsz as TotalMB
+from 
+    mystats
+where 
+    tabname = ?
+order by
+    capturedt
+RETURNING linegraph(*)
+ WHERE
+  WIDTH=600 AND 
+  HEIGHT=400 AND 
+  format='PNG' and
+  KEEPORIGIN=1 and 
+  SHOWGRID=1 and 
+  linewidth=2 and
+  gridcolor='lgray' and 
+  x_orient='VERTICAL' and
+  x_axis = ' ' and 
+  y_axis = 'MB' and
+  SIGNATURE='abc (Ver 1.0)' and
+  TITLE = 'Table Growth (PS_JOB)'
+</pre></td></tr>
+</table>
 ";
 
 foreach (1..100) {
@@ -1057,7 +1084,7 @@ symline:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table symline');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table symline (xdate varchar(20), y integer)');
+	$dbh->do('create temp table symline (xdate varchar(20), y integer)');
 	$sth = $dbh->prepare('insert into symline values(?, ?)');
 	$sth->execute($xdate[$_], $y1[$_])
 		foreach (0..$#x);
@@ -1157,7 +1184,7 @@ simpbox:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table simpbox');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table simpbox (xbox integer, xbox2 integer)');
+	$dbh->do('create temp table simpbox (xbox integer, xbox2 integer)');
 	$sth = $dbh->prepare('insert into simpbox values(?, ?)');
 
 	$sth->execute($xbox[$_], $xbox2[$_])
@@ -1189,7 +1216,7 @@ simpcandle:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table simpcandle');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table simpcandle (x integer, ylo integer, yhi integer)');
+	$dbh->do('create temp table simpcandle (x integer, ylo integer, yhi integer)');
 	$sth = $dbh->prepare('insert into simpcandle values(?, ?, ?)');
 	$sth->execute($x[$_], $y1[$_], $y2[$_])
 		foreach (0..$#x);
@@ -1221,7 +1248,7 @@ simppie:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table simppie');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table simppie (x integer, y2 integer)');
+	$dbh->do('create temp table simppie (x integer, y2 integer)');
 	$sth = $dbh->prepare('insert into simppie values(?, ?)');
 	$sth->execute($x[$_], $y2[$_])
 		foreach (0..$#x);
@@ -1295,7 +1322,7 @@ templine:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table templine');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table templine (xdate varchar(20), y integer)');
+	$dbh->do('create temp table templine (xdate varchar(20), y integer)');
 	$sth = $dbh->prepare('insert into templine values(?, ?)');
 	$sth->execute($xdate[$_], $y1[$_])
 		foreach (0..$#xdate);
@@ -1327,7 +1354,7 @@ templine2:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table templine2');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table templine2 (xdate varchar(20), y varchar(20))');
+	$dbh->do('create temp table templine2 (xdate varchar(20), y varchar(20))');
 	$sth = $dbh->prepare('insert into templine2 values(?, ?)');
 	$sth->execute($xdate[$_], $ytime[$_])
 		foreach (0..$#xdate);
@@ -1360,7 +1387,7 @@ logtempline:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table logtempline');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table logtempline (xdate varchar(20), y varchar(20))');
+	$dbh->do('create temp table logtempline (xdate varchar(20), y varchar(20))');
 	$sth = $dbh->prepare('insert into logtempline values(?, ?)');
 	$sth->execute($xdate2[$_], $ytime2[$_])
 		foreach (0..$#xdate2);
@@ -1472,7 +1499,7 @@ complpa:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table complpa');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table complpa (x integer, y integer)');
+	$dbh->do('create temp table complpa (x integer, y integer)');
 	$sth = $dbh->prepare('insert into complpa values(?, ?)');
 
 	$sth->execute($x[$_], $y3[$_])
@@ -1559,10 +1586,10 @@ complnbox:
 	$dbh->do('drop table simpbox');
 	$dbh->do('drop table complnbox');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table simpbox (x integer)');
+	$dbh->do('create temp table simpbox (x integer)');
 	$sth = $dbh->prepare('insert into simpbox values(?)');
 	$sth->execute($_) foreach (@xbox);
-	$dbh->do('create table complnbox (xfreq integer, yfreq integer)');
+	$dbh->do('create temp table complnbox (xfreq integer, yfreq integer)');
 	$sth = $dbh->prepare('insert into complnbox values(?, ?)');
 	$sth->execute($xfreq[$_], $yfreq[$_])
 		foreach (0..$#xfreq);
@@ -1602,10 +1629,10 @@ compllbb:
 	$dbh->do('drop table simpbox2');
 	$dbh->do('drop table compllbb');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table simpbox2 (x integer)');
+	$dbh->do('create temp table simpbox2 (x integer)');
 	$sth = $dbh->prepare('insert into simpbox2 values(?)');
 	$sth->execute($_) foreach (@xbox2);
-	$dbh->do('create table compllbb (xfreq2 integer, yfreq2 integer)');
+	$dbh->do('create temp table compllbb (xfreq2 integer, yfreq2 integer)');
 	$sth = $dbh->prepare('insert into compllbb values(?, ?)');
 
 	$sth->execute($xfreq2[$_], $yfreq2[$_])
@@ -1686,8 +1713,8 @@ denseline:
 	$dbh->do('drop table densesin');
 	$dbh->do('drop table densecos');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table densesin (angle real, sine real)');
-	$dbh->do('create table densecos (angle real, cosine real)');
+	$dbh->do('create temp table densesin (angle real, sine real)');
+	$dbh->do('create temp table densecos (angle real, cosine real)');
 	$sth = $dbh->prepare('insert into densesin values(?,?)');
 	$sth2 = $dbh->prepare('insert into densecos values(?,?)');
 	$i = 0;
@@ -1759,7 +1786,7 @@ my @depends = ( '3rd task',  'Final task', undef,    '2nd task',  undef);
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table simpgantt');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table simpgantt (task varchar(30),
+	$dbh->do('create temp table simpgantt (task varchar(30),
 		starts varchar(20), ends varchar(20), assignee varchar(3), pctcomplete integer, 
 		dependent varchar(30))');
 	$sth = $dbh->prepare('insert into simpgantt values(?,?,?,?,?,?)');
@@ -1799,7 +1826,7 @@ stackbar:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table stackbar');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table stackbar (x integer, ylo integer, yhi integer)');
+	$dbh->do('create temp table stackbar (x integer, ylo integer, yhi integer)');
 	$sth = $dbh->prepare('insert into stackbar values(?, ?, ?)');
 	$sth->execute($x[$_], $y1[$_], $y3[$_])
 		foreach (0..$#x);
@@ -1880,7 +1907,7 @@ stackarea:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table stackbar');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table stackbar (x integer, ylo integer, yhi integer)');
+	$dbh->do('create temp table stackbar (x integer, ylo integer, yhi integer)');
 	$sth = $dbh->prepare('insert into stackbar values(?, ?, ?)');
 	$sth->execute($x[$_], $y2[$_], $y3[$_])
 		foreach (0..$#x);
@@ -1910,7 +1937,7 @@ stackcandle:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table stackcandle');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table stackcandle (x integer, ylo integer, ymid integer, yhi integer)');
+	$dbh->do('create temp table stackcandle (x integer, ylo integer, ymid integer, yhi integer)');
 	$sth = $dbh->prepare('insert into stackcandle values(?, ?, ?, ?)');
 	$sth->execute($x[$_], $y1[$_], $y2[$_], $y3[$_])
 		foreach (0..$#x);
@@ -2008,7 +2035,7 @@ quadtree:
 	$dbh->{PrintError} = 0;
 $dbh->do('DROP TABLE myquad');
 	$dbh->{PrintError} = 1;
-$dbh->do('CREATE TABLE myquad (
+$dbh->do('CREATE TEMP TABLE myquad (
 		Sector		varchar(30),
 		Subsector	varchar(30),
 		Stock		varchar(30),
@@ -2069,7 +2096,7 @@ bar3axis:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table bar3axis');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table bar3axis (Region varchar(10), Sales integer, Quarter CHAR(2))');
+	$dbh->do('create temp table bar3axis (Region varchar(10), Sales integer, Quarter CHAR(2))');
 	$sth = $dbh->prepare('insert into bar3axis values(?, ?, ?)');
 	$sth->execute($x3d[$_], $y3d[$_], $z[$_])
 		foreach (0..$#x3d);
@@ -2176,7 +2203,7 @@ stack3Dbar:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table stackbar');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table stackbar (x integer, ylo integer, yhi integer)');
+	$dbh->do('create temp table stackbar (x integer, ylo integer, yhi integer)');
 	$sth = $dbh->prepare('insert into stackbar values(?, ?, ?)');
 	$sth->execute($x[$_], $y1[$_], $y3[$_])
 		foreach (0..$#x);
@@ -2244,7 +2271,7 @@ tmstamp:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table tmstamp');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table tmstamp (x varchar(30), y integer)');
+	$dbh->do('create temp table tmstamp (x varchar(30), y integer)');
 	$sth = $dbh->prepare('insert into tmstamp values(?, ?)');
 	$sth->execute($xtmstamp[$_], $y3[$_])
 		foreach (0..$#x);
@@ -2279,7 +2306,7 @@ floatbar:
 	$dbh->{PrintError} = 0;
 	$dbh->do('drop table floatbar');
 	$dbh->{PrintError} = 1;
-	$dbh->do('create table floatbar (x integer, ylo integer, ymid integer, yhi integer)');
+	$dbh->do('create temp table floatbar (x integer, ylo integer, ymid integer, yhi integer)');
 	$sth = $dbh->prepare('insert into floatbar values(?, ?, ?, ?)');
 	$sth->execute($x[$_], $y1[$_], $y2[$_], $y3[$_])
 		foreach (0..$#x);
@@ -2384,14 +2411,14 @@ multwidth:
 	$dbh->do('drop table midline');
 	$dbh->{PrintError} = 1;
 	$dbh->do(
-'create table floatbar (x integer, baseline integer, cold integer, warm integer, hot integer)');
+'create temp table floatbar (x integer, baseline integer, cold integer, warm integer, hot integer)');
 	$sth = $dbh->prepare('insert into floatbar values(?, ?, ?, ?, ?)');
 	$sth->execute(10, -50, -10, 50, 140);
 	$sth->execute(50, -50, -10, 50, 140);
 
-	$dbh->do('create table regline (x integer, ylo integer)');
-	$dbh->do('create table fatline (x integer, ymid integer)');
-	$dbh->do('create table midline (x integer, yhi integer)');
+	$dbh->do('create temp table regline (x integer, ylo integer)');
+	$dbh->do('create temp table fatline (x integer, ymid integer)');
+	$dbh->do('create temp table midline (x integer, yhi integer)');
 	$sth1 = $dbh->prepare('insert into regline values(?, ?)');
 	$sth2 = $dbh->prepare('insert into fatline values(?, ?)');
 	$sth3 = $dbh->prepare('insert into midline values(?, ?)');
@@ -2441,6 +2468,65 @@ multwidth:
 	dump_img($row, 'png', 'multwidth');
 	$testnum++;
 	print "ok $testnum multwidth OK\n";
+#
+#	test added for PHs in source stmt
+#
+srcphs:
+	$dbh->do('create temp table mystats (
+		capturedt	char(10),
+		tblsz	int,
+		tabname	varchar(100)
+	)') || die "Can't create temp table: " . $dbh->errstr;
+
+	$dbh->do("insert into mystats values('2005-02-10', 324143, 'PS_JOB')");
+	$dbh->do("insert into mystats values('2005-02-11', 354545, 'PS_JOB')");
+	$dbh->do("insert into mystats values('2005-02-12', 99766, 'PS_JOB')");
+	$dbh->do("insert into mystats values('2005-02-13', 135346, 'PS_JOB')");
+	$dbh->do("insert into mystats values('2005-02-14', 454364, 'PS_JOB')");
+	$dbh->do("insert into mystats values('2005-02-14', 454364, 'somother_JOB')");
+
+	my $tbl = 'PS_JOB';
+	$sth = $dbh->prepare(qq(
+select 
+	capturedt, 
+    tblsz as TotalMB
+from 
+    mystats
+where 
+    tabname = ?
+order by
+    capturedt
+RETURNING linegraph(*)
+ WHERE
+  WIDTH=600 AND 
+  HEIGHT=400 AND 
+  format='PNG' and
+  KEEPORIGIN=1 and 
+  SHOWGRID=1 and 
+  linewidth=2 and
+  gridcolor='lgray' and 
+  x_orient='VERTICAL' and
+  x_axis = ' ' and 
+  y_axis = 'MB' and
+  SIGNATURE='abc (Ver 1.0)' and
+  TITLE = 'Table Growth ($tbl)'
+),
+	{
+		chart_type_map => [ 
+			{ NAME => 'capturedt', TYPE => SQL_CHAR, PRECISION => 10 },
+			{ NAME => 'tblsz', TYPE => SQL_INTEGER },
+			{ NAME => 'tabname', TYPE => SQL_VARCHAR, PRECISION => 100 }
+			]
+	}
+);
+
+	$sth->bind_param(1, $tbl);
+
+	$sth->execute;
+	$row = $sth->fetchrow_arrayref;
+	dump_img($row, 'png', 'srcphs', 1);
+	$testnum++;
+	print "ok $testnum srcphs OK\n";
 
 print HTMLF "</hmtl></body>\n";
 close HTMLF;

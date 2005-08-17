@@ -18,7 +18,7 @@ use DBI 1.27;
 use DBD::Chart 0.80;
 
 BEGIN {
-$DBIx::Chart::VERSION = '0.03';
+$DBIx::Chart::VERSION = '0.04';
 }
 #
 #	immediately grab a DBD::Chart handle for our use
@@ -67,135 +67,6 @@ IMAGE 1);
 #  $rc  = $dbh->commit;
 #  $rc  = $dbh->rollback;
 #
-
-sub do {
-	my($dbh,$statement, $attr, @bind_values) = @_;
-#
-#	for now we assume this can't be data returning
-#
-	return $dbh->SUPER::do($statement, $attr, @bind_values);
-}
-
-sub selectall_arrayref {
-	my ($dbh, $statement, @args) = @_;
-
-    return $dbh->SUPER::selectall_arrayref($statement, @args)
-    	unless ((ref $statement) || $dbh->_chart_is_chart($statement));
-
-    return $dbh->SUPER::selectall_arrayref($statement, @args)
-    	if (ref $statement && (! $statement->{_chart_sth}));
-    
-	my $attr = shift @args;
-    my $sth = (ref $statement) ? $statement : $dbh->prepare($statement, $attr);
-    return undef unless $sth;
-    
-    $sth->execute(@args) || return undef;
-    
-    return $sth->fetchall_arrayref;
-}
-
-sub selectall_hashref {
-	my ($dbh, $statement, @args) = @_;
-    return $dbh->SUPER::selectall_hashref($statement, @args)
-    	unless ((ref $statement) || $dbh->_chart_is_chart($statement));
-    
-    return $dbh->SUPER::selectall_hashref($statement, @args)
-    	if (ref $statement && (! $statement->{_chart_sth}));
-    
-	my $attr = shift @args;
-    my $sth = (ref $statement) ? $statement : $dbh->prepare($statement, $attr);
-    return undef unless $sth;
-    
-    $sth->execute(@args) || return undef;
-    
-    return $sth->fetchall_hashref;
-}
-
-sub selectcol_arrayref {
-	my ($dbh, $statement, @args) = @_;
-    return $dbh->SUPER::selectcol_arrayref($statement, @args)
-    	unless ((ref $statement) || $dbh->_chart_is_chart($statement));
-
-    return $dbh->SUPER::selectcol_arrayref($statement, @args)
-    	if (ref $statement && (! $statement->{_chart_sth}));
-    
-	my $attr = shift @args;
-    my $sth = (ref $statement) ? $statement : $dbh->prepare($statement, $attr);
-    return undef unless $sth;
-
-    $sth->execute(@args) || return undef;
-    
-    my $cols = $attr->{Columns};
-    $cols = [ 1 ] unless $cols;
-    
-    foreach (@$cols) {
-#
-#	how do we raise errors here ?
-#
-		Carp::croak('Invalid column number.') if $dbh->{RaiseError};
-		Carp::carp('Invalid column number.') if $dbh->{PrintError};
-    	return $dbh->SUPER::set_err(-1, 'Invalid column number.', 'S1000')
-    		unless (($_ == 1) || ($_ == 2));
-    }
-#
-#	there's only one row returned for a chart
-#
-    my $row = $sth->fetchrow_arrayref or return undef;
-    my $retrow = [ ];
-    push @$retrow, $$row[$_-1] foreach (@$cols);
-    return $retrow;
-}
-
-sub selectrow_array {
-	my ($dbh, $statement, @args) = @_;
-    return $dbh->SUPER::selectrow_array($statement, @args)
-    	unless ((ref $statement) || $dbh->_chart_is_chart($statement));
-
-    return $dbh->SUPER::selectrow_array($statement, @args)
-    	if (ref $statement && (! $statement->{_chart_sth}));
-    
-	my $attr = shift @args;
-    my $sth = (ref $statement) ? $statement : $dbh->prepare($statement, $attr);
-    return undef unless $sth;
-
-    $sth->execute(@args) || return undef;
-    
-    return $sth->fetchrow_array;
-}
-
-sub selectrow_arrayref {
-	my ($dbh, $statement, @args) = @_;
-    return $dbh->SUPER::selectrow_arrayref($statement, @args)
-    	unless ((ref $statement) || $dbh->_chart_is_chart($statement));
-
-    return $dbh->SUPER::selectrow_arrayref($statement, @args)
-    	if (ref $statement && (! $statement->{_chart_sth}));
-    
-	my $attr = shift @args;
-    my $sth = (ref $statement) ? $statement : $dbh->prepare($statement, $attr);
-    return undef unless $sth;
-
-    $sth->execute(@args) || return undef;
-    my $row = $sth->fetchrow_arrayref;
-    return $row;
-}
-
-sub selectrow_hashref {
-	my ($dbh, $statement, @args) = @_;
-    return $dbh->SUPER::selectrow_hashref($statement, @args)
-    	unless ((ref $statement) || $dbh->_chart_is_chart($statement));
-
-    return $dbh->SUPER::selectrow_hashref($statement, @args)
-    	if (ref $statement && (! $statement->{_chart_sth}));
-    
-	my $attr = shift @args;
-    my $sth = (ref $statement) ? $statement : $dbh->prepare($statement, $attr);
-    return undef unless $sth;
-
-    $sth->execute(@args) || return undef;
-    
-    return $sth->fetchrow_hashref;
-}
 
 sub prepare_cached {
 	my ($dbh, $stmt, @args) = @_;
@@ -246,12 +117,15 @@ sub prepare {
 #
 	my $qryhash = $dbh->_chart_parse_sql($sql, $strary, $phcnt);
 	return unless $qryhash;
-	
+#
+#	!!!THIS MUST BE DERIVED THRU THE DBI!!!
+#
 	my $sth = { };
-	bless $sth, DBIx::Chart::st;
+#	bless $sth, DBIx::Chart::st;
+
 	$sth->{_src_sths} = [ ];
 	$sth->{_src_cols} = [ ];
-	$sth->{_src_phs} = $qryhash->{_src_phs};
+	$sth->{_src_phs} = $qryhash->{_qry_phs};
 	$sth->{_chart_phs} = $qryhash->{_chart_phs};
 	$sth->{_chart_src_idx} = $phcnt;
 
@@ -270,20 +144,32 @@ sub prepare {
 #
 	my $src_sth;
 	foreach (0..$#{$qryhash->{_queries}}) {
-		$src_sth = $dbh->SUPER::prepare($qryhash->{_queries}->[$_], \%tattrs) || return undef;
+		$src_sth = $dbh->SUPER::prepare($qryhash->{_queries}->[$_], \%tattrs) 
+			or return undef;
 		push @{$sth->{_src_sths}}, $src_sth;
 	}
 #
 #	need a way to indicate which columns of the source stmt we want
 #
-	$sth->{_chart_sth} = $chartdbh->prepare($qryhash->{_chartqry}, 
-	{ 
-		chart_no_verify => $chart_no_verify,
-		chart_map_modifier => $chart_map_modifier,
-		chart_type_map =>	$chart_type_map
-	}) 
-		or return undef;
-    return $sth;
+	my $chartsth = $sth->{_chart_sth} = 
+		$chartdbh->prepare($qryhash->{_chartqry}, 
+		{ 
+			chart_no_verify => $chart_no_verify,
+			chart_map_modifier => $chart_map_modifier,
+			chart_type_map =>	$chart_type_map
+		}) || return undef; 
+#
+#	clone the chart sth into our own version
+#
+	my($outer, $osth) = DBI::_new_sth($dbh, {
+		Statement     => $stmt,
+	});
+	
+	map { $osth->{$_} = $chartsth->{$_}; }
+		(qw(NUM_OF_FIELDS NUM_OF_PARAMS NAME TYPE PRECISION SCALE NULLABLE));
+
+	$osth->{private_dbix_chart_sth} = $sth;
+    return $outer;
 }
 
 sub _chart_remove_strings {
@@ -305,8 +191,13 @@ sub _chart_count_phs {
 	my ($sql, $count) = @_;
 	
 	my $i = $$count;
-	$sql=~s/\?\b/\?$i/s, $i++
-		while ($sql=~/\?\b/s);
+	my @phpos = ();
+	push @phpos, pos($sql)
+		while ($sql=~/\?/gcs);
+	
+	substr($sql, (pop @phpos) - 1, 1) = "?$i",
+	$i++
+		while @phpos;
 	
 	$$count = $i;
 	return $sql;
@@ -332,7 +223,7 @@ sub _chart_parse_sql {
 	my @qryphs = ();
 	my $chartqry;
 	my $remnant;
-	$sql=~s/[\n\r]/ /g;
+#	$sql=~s/[\n\r]/ /g;
 	if ($sql=~/\bRETURNING\s+IMAGE(\s*,\s*IMAGEMAP)?\s+WHERE\s+(.+?)$/si) {
 		my $imagemap = $1;
 		my $global_props = $2;
@@ -443,21 +334,6 @@ sub _chart_restore_phs {
 	return $phs;
 }
 
-sub err {
-	my ($dbh) = @_;
-	return $dbh->SUPER::err;
-}
-
-sub errstr {
-	my ($dbh) = @_;
-	return $dbh->SUPER::errstr;
-}
-
-sub state {
-	my ($dbh) = @_;
-	return $dbh->SUPER::state;
-}
-
 no strict 'vars';
 
 package DBIx::Chart::st;
@@ -471,13 +347,28 @@ sub bind_param {
 #	we need to apply the bound params to the appropriate stmt's
 #	matching placeholder position
 
-	return $sth->SUPER::bind_param($parmnum, @args) unless $sth->{_chart_sth};
+	return $sth->SUPER::bind_param($parmnum, @args) 
+		unless $sth->{private_dbix_chart_sth};
 	
-	my $phmap = $sth->{_src_phs};
+	my $chartsth = $sth->{private_dbix_chart_sth};
+
+	my $phcnt = $chartsth->{_chart_src_idx};
+
+	return $sth->set_err(-1, 'Invalid parameter number.', 'S1000')
+		unless ($parmnum <= $phcnt);
+#
+#	check if its a chart PH
+#
+	return $chartsth->{_chart_sth}->bind_param(
+		$parmnum - $chartsth->{_chart_phs}[0], @args)
+		if ($chartsth->{_chart_phs}[0] &&
+			$parmnum > $chartsth->{_chart_phs}[0]);
+	
+	my $phmap = $chartsth->{_src_phs};
 	foreach my $i (0..$#$phmap) {	# for each stmt
 		foreach (@{$phmap->[$i]}) { # for each PH of the stmt
-			return $sth->SUPER::bind_param($_+1, @args)
-				if ($phmap->[$i]->[$_] == $parmnum);
+			return $chartsth->{_src_sths}[$i]->SUPER::bind_param($_+1, @args)
+				if ($phmap->[$i][$_] == $parmnum-1);
 		}
 	}
 #
@@ -492,16 +383,19 @@ sub bind_param {
 sub execute {
 	my ($sth, @args) = @_;
 	
-	return $sth->SUPER::execute(@args) unless $sth->{_chart_sth};
+	return $sth->SUPER::execute(@args) 
+		unless $sth->{private_dbix_chart_sth};
 #
 #	first execute each source sth, then execute the chart sth,
 #	passing in the source sth's as a param, and picking up any 
 #	other placeholders we might need
 	my @exec_parms;
-	my $src_sths = $sth->{_src_sths};
-	my $src_phs = $sth->{_src_phs};
-	my $chart_phs = $sth->{_chart_phs};
-	my $phcnt = $sth->{_chart_src_idx};
+	my $chartsth = $sth->{private_dbix_chart_sth};
+
+	my $src_sths = $chartsth->{_src_sths};
+	my $src_phs = $chartsth->{_src_phs};
+	my $chart_phs = $chartsth->{_chart_phs};
+	my $phcnt = $chartsth->{_chart_src_idx};
 	my $rc;
 	foreach my $i (0..$#$src_sths) {
 		@exec_parms = ();
@@ -528,12 +422,7 @@ sub execute {
 	$exec_parms[$_] =  $args[$chart_phs->[$_]]
 		foreach (0..$#$chart_phs);
 
-	return $sth->SUPER::set_err($sth->{_chart_sth}->SUPER::err,
-		$sth->{_chart_sth}->SUPER::errstr,
-		$sth->{_chart_sth}->SUPER::state)
-		unless $sth->{_chart_sth}->SUPER::execute(@exec_parms);
-		
-	return 1;
+	return $chartsth->{_chart_sth}->SUPER::execute(@exec_parms);
 #
 #	do we need to explicitly finish each of our src_sth's ?
 #	I don't think so...
@@ -560,40 +449,40 @@ sub remove_producer {
 sub bind_col {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::bind_col(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::bind_col(@args) :
     	$sth->SUPER::bind_col(@args);
 }
 
 sub bind_columns {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::bind_columns(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::bind_columns(@args) :
     	$sth->SUPER::bind_columns(@args);
 }
 
 sub rows {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::rows(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::rows(@args) :
     	$sth->SUPER::rows(@args);
 }
 
 sub fetchrow_array {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::fetchrow_array(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchrow_array(@args) :
     	$sth->SUPER::fetchrow_array(@args);
 }
 
 sub fetchrow_arrayref {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::fetchrow_arrayref(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchrow_arrayref(@args) :
     	$sth->SUPER::fetchrow_arrayref(@args);
 }
 *fetch = \&fetchrow_arrayref;
@@ -601,60 +490,64 @@ sub fetchrow_arrayref {
 sub fetchrow_hashref {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::fetchrow_hashref(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchrow_hashref(@args) :
     	$sth->SUPER::fetchrow_hashref(@args);
 }
 
 sub fetchall_array {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::fetchall_array(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchall_array(@args) :
     	$sth->SUPER::fetchall_array(@args);
 }
 
 sub fetchall_arrayref {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::fetchall_arrayref(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchall_arrayref(@args) :
     	$sth->SUPER::fetchall_arrayref(@args);
 }
 
 sub fetchall_hashref {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::fetchall_hashref(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchall_hashref(@args) :
     	$sth->SUPER::fetchall_hashref(@args);
 }
 
 sub cancel {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::cancel(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::cancel(@args) :
     	$sth->SUPER::cancel(@args);
 }
 
 sub func {
     my($sth, @args) = @_;
 
-    return $sth->{_chart_sth} ? 
-    	$sth->{_chart_sth}->SUPER::cancel(@args) :
+    return $sth->{private_dbix_chart_sth} ? 
+    	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::cancel(@args) :
     	$sth->SUPER::func(@args);
 }
 
 sub finish {
     my($sth, @args) = @_;
 
-    return $sth->SUPER::finish(@args) unless $sth->{_chart_sth};
+    return $sth->SUPER::finish(@args) 
+    	unless $sth->{private_dbix_chart_sth};
 #
 #	finish each of our subordinate sths
 #
-	$_->SUPER::finish foreach (@{$sth->{_src_sths}});
-	$sth->{_chart_sth}->SUPER::finish;
+	my $chartsth = $sth->{private_dbix_chart_sth};
+	$_->SUPER::finish 
+		foreach (@{$chartsth->{_src_sths}});
+	$_->{_chart_sth}->SUPER::finish
+		if $_->{_chart_sth};
 	return 1;
 }
 

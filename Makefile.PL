@@ -17,7 +17,13 @@ print "\nConfiguring DBIx::Chart ...\n
    \tAnd re-read it if you have any problems.\n
 ";
 
-my %prereq;
+my %prereq = (
+'DBI' => '1.28',
+'GD' => '1.19',
+'GD::Text' => '0.80',
+'DBD::Chart' => '0.81'
+);
+
 my %opts =
     ('NAME' => 'DBIx::Chart',
      'VERSION_FROM' => 'Chart.pm',
@@ -32,13 +38,12 @@ if ($ExtUtils::MakeMaker::VERSION >= 5.43) {
     $opts{'ABSTRACT'} = 'DBI Abstraction for Charting/graphing';
     $opts{'PREREQ_PM'} = \%prereq;
 }
-my $ok = 1;
-$ok &&= CheckModule('DBI', '1.27');
-$ok &&= CheckModule('GD', '1.19');
-$ok &&= CheckModule('GD::Text', '0.80');
-$ok &&= CheckModule('DBD::Chart', '0.80');
+my $ok = 0;
 
-if (!$ok) {
+$ok += CheckModule($_, $prereq{$_})
+	foreach (keys %prereq);
+
+if ($ok < scalar keys %prereq) {
     print("\n",
 	  "Missing modules are available from any CPAN mirror, for example\n",
 	  "\tftp://ftp.funet.fi/pub/languages/perl/CPAN/modules/by-module\n",
