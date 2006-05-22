@@ -21,13 +21,13 @@ my %prereq = (
 'DBI' => '1.28',
 'GD' => '1.19',
 'GD::Text' => '0.80',
-'DBD::Chart' => '0.81'
+'DBD::Chart' => '0.82'
 );
 
 my %opts =
     ('NAME' => 'DBIx::Chart',
      'VERSION_FROM' => 'Chart.pm',
-     'dist'         => { 
+     'dist'         => {
 	 	'DIST_DEFAULT' => 'all tardist',
      	'SUFFIX'       => 'gz',
 	 	'COMPRESS'     => 'gzip -9vf' }

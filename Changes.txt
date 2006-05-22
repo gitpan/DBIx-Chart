@@ -1,5 +1,11 @@
 Change History for DBIx::Chart:
 
+Release 0.05:
+
+	- fixed incompatbility for some DBD's that don't
+		support multiple open stmt handles; permits
+		DBD::Chart to execute() handles if needed
+
 Release 0.04:
 
 	- Fixed placeholder mapping for source statements

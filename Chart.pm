@@ -1,5 +1,5 @@
 #
-#	DBIx::Chart - subclass of DBI to transparently provide 
+#	DBIx::Chart - subclass of DBI to transparently provide
 #		charting capability
 #
 #	History:
@@ -15,10 +15,10 @@
 
 require 5.6.0;
 use DBI 1.27;
-use DBD::Chart 0.80;
+use DBD::Chart 0.82;
 
 BEGIN {
-$DBIx::Chart::VERSION = '0.04';
+$DBIx::Chart::VERSION = '0.05';
 }
 #
 #	immediately grab a DBD::Chart handle for our use
@@ -37,7 +37,7 @@ use strict 'vars';
 use Carp;
 
 #
-#	we should really let DBD::Chart 
+#	we should really let DBD::Chart
 #	provide something to tell us which
 #	types of charts it supports
 my %chart_types = qw(
@@ -80,7 +80,7 @@ sub prepare_cached {
 
 sub _chart_is_chart {
 	my ($dbh, $stmt) = @_;
-	
+
 	my $sql = (ref $stmt) ? $$stmt : $stmt;
 	my $strary = _chart_remove_strings(\$sql);
 	$$stmt = $sql if ref $stmt;
@@ -144,27 +144,27 @@ sub prepare {
 #
 	my $src_sth;
 	foreach (0..$#{$qryhash->{_queries}}) {
-		$src_sth = $dbh->SUPER::prepare($qryhash->{_queries}->[$_], \%tattrs) 
+		$src_sth = $dbh->SUPER::prepare($qryhash->{_queries}->[$_], \%tattrs)
 			or return undef;
 		push @{$sth->{_src_sths}}, $src_sth;
 	}
 #
 #	need a way to indicate which columns of the source stmt we want
 #
-	my $chartsth = $sth->{_chart_sth} = 
-		$chartdbh->prepare($qryhash->{_chartqry}, 
-		{ 
+	my $chartsth = $sth->{_chart_sth} =
+		$chartdbh->prepare($qryhash->{_chartqry},
+		{
 			chart_no_verify => $chart_no_verify,
 			chart_map_modifier => $chart_map_modifier,
 			chart_type_map =>	$chart_type_map
-		}) || return undef; 
+		}) || return undef;
 #
 #	clone the chart sth into our own version
 #
 	my($outer, $osth) = DBI::_new_sth($dbh, {
 		Statement     => $stmt,
 	});
-	
+
 	map { $osth->{$_} = $chartsth->{$_}; }
 		(qw(NUM_OF_FIELDS NUM_OF_PARAMS NAME TYPE PRECISION SCALE NULLABLE));
 
@@ -174,7 +174,7 @@ sub prepare {
 
 sub _chart_remove_strings {
 	my ($sql) = @_;
-	
+
 	my @strlits = ();
 	my $i = 0;
 #
@@ -189,16 +189,16 @@ sub _chart_remove_strings {
 
 sub _chart_count_phs {
 	my ($sql, $count) = @_;
-	
+
 	my $i = $$count;
 	my @phpos = ();
 	push @phpos, pos($sql)
 		while ($sql=~/\?/gcs);
-	
+
 	substr($sql, (pop @phpos) - 1, 1) = "?$i",
 	$i++
 		while @phpos;
-	
+
 	$$count = $i;
 	return $sql;
 }
@@ -208,7 +208,7 @@ sub _chart_parse_sql {
 #
 #	check for this form:
 #
-#	SELECT * FROM 
+#	SELECT * FROM
 #		(SELECT <collist> FROM <table>
 #		[ WHERE ...] [ GROUP BY | ORDER BY | HAVING | ...]
 #		RETURNING <charttype> WHERE ....) [<qryname>]
@@ -270,8 +270,8 @@ sub _chart_parse_sql {
 		my $phs = _chart_restore_phs(\$chartqry);
 		$chartqry = _chart_restore_strings($chartqry, $strary);
 
-		return { _chartqry => $chartqry, 
-				_queries => \@queries, 
+		return { _chartqry => $chartqry,
+				_queries => \@queries,
 				_qry_phs => \@qryphs,
 				_chart_phs => $phs };
 	}
@@ -282,7 +282,7 @@ sub _chart_parse_sql {
 #	RETURNING <charttype>(<collist>) [, IMAGEMAP] WHERE ....
 #
 	return undef unless ($sql=~/^\s*(.+?)\s+RETURNING\s+(CANDLESTICK|LINEGRAPH|AREAGRAPH|POINTGRAPH|QUADTREE|BARCHART|BOXCHART|HISTOGRAM|PIECHART|GANTT)\s*\(\s*([^\)]+)\)(\s*,\s*IMAGEMAP)?\s+(WHERE\s+.*)/si);
-	
+
 	push @queries, $1;
 	$chartqry = $4 ? "SELECT $2($3), IMAGEMAP FROM ?$phcnt $5" : "SELECT $2($3) FROM ?$phcnt $5";
 #
@@ -296,9 +296,9 @@ sub _chart_parse_sql {
 	my $phs = _chart_restore_phs(\$chartqry);
 	$chartqry = _chart_restore_strings($chartqry, $strary);
 
-	return { 
-		_chartqry => $chartqry, 
-		_queries => \@queries, 
+	return {
+		_chartqry => $chartqry,
+		_queries => \@queries,
 		_qry_phs => \@qryphs,
 		_chart_phs => $phs
 		};
@@ -321,7 +321,7 @@ sub _chart_restore_strings {
 	$str = $$strary[$1],
 	$sql=~s/<\d+>/'$str'/s
 		while ($sql=~/<(\d+)>/s);
-		
+
 	return $sql
 }
 
@@ -347,9 +347,9 @@ sub bind_param {
 #	we need to apply the bound params to the appropriate stmt's
 #	matching placeholder position
 
-	return $sth->SUPER::bind_param($parmnum, @args) 
+	return $sth->SUPER::bind_param($parmnum, @args)
 		unless $sth->{private_dbix_chart_sth};
-	
+
 	my $chartsth = $sth->{private_dbix_chart_sth};
 
 	my $phcnt = $chartsth->{_chart_src_idx};
@@ -363,7 +363,7 @@ sub bind_param {
 		$parmnum - $chartsth->{_chart_phs}[0], @args)
 		if ($chartsth->{_chart_phs}[0] &&
 			$parmnum > $chartsth->{_chart_phs}[0]);
-	
+
 	my $phmap = $chartsth->{_src_phs};
 	foreach my $i (0..$#$phmap) {	# for each stmt
 		foreach (@{$phmap->[$i]}) { # for each PH of the stmt
@@ -382,12 +382,12 @@ sub bind_param {
 
 sub execute {
 	my ($sth, @args) = @_;
-	
-	return $sth->SUPER::execute(@args) 
+
+	return $sth->SUPER::execute(@args)
 		unless $sth->{private_dbix_chart_sth};
 #
 #	first execute each source sth, then execute the chart sth,
-#	passing in the source sth's as a param, and picking up any 
+#	passing in the source sth's as a param, and picking up any
 #	other placeholders we might need
 	my @exec_parms;
 	my $chartsth = $sth->{private_dbix_chart_sth};
@@ -403,15 +403,10 @@ sub execute {
 			push @exec_parms, $args[$_]
 				foreach (@{$src_phs->[$i]});
 		}
-		$rc = $src_sths->[$i]->SUPER::execute(@exec_parms);
-		return $sth->SUPER::set_err($src_sths->[$i]->SUPER::err,
-			$src_sths->[$i]->SUPER::errstr,
-			$src_sths->[$i]->SUPER::state)
-			unless $rc;
 #
 #	fill out our param list w/ sths to simplify the chart ph mapping
 #
-		$args[$phcnt++] = $src_sths->[$i];
+		$args[$phcnt++] = DBIx::Chart::SthContainer->new($src_sths->[$i], @exec_parms);
 	}
 #
 #	now map each src_sth into its chart_sth placeholder,
@@ -427,7 +422,7 @@ sub execute {
 #	do we need to explicitly finish each of our src_sth's ?
 #	I don't think so...
 #
-#	some day we'll turn this into a generalized distributed JOIN 
+#	some day we'll turn this into a generalized distributed JOIN
 #	mechanism...maybe w/ some optimizations ?
 }
 #
@@ -449,7 +444,7 @@ sub remove_producer {
 sub bind_col {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::bind_col(@args) :
     	$sth->SUPER::bind_col(@args);
 }
@@ -457,7 +452,7 @@ sub bind_col {
 sub bind_columns {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::bind_columns(@args) :
     	$sth->SUPER::bind_columns(@args);
 }
@@ -465,7 +460,7 @@ sub bind_columns {
 sub rows {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::rows(@args) :
     	$sth->SUPER::rows(@args);
 }
@@ -473,7 +468,7 @@ sub rows {
 sub fetchrow_array {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchrow_array(@args) :
     	$sth->SUPER::fetchrow_array(@args);
 }
@@ -481,7 +476,7 @@ sub fetchrow_array {
 sub fetchrow_arrayref {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchrow_arrayref(@args) :
     	$sth->SUPER::fetchrow_arrayref(@args);
 }
@@ -490,7 +485,7 @@ sub fetchrow_arrayref {
 sub fetchrow_hashref {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchrow_hashref(@args) :
     	$sth->SUPER::fetchrow_hashref(@args);
 }
@@ -498,7 +493,7 @@ sub fetchrow_hashref {
 sub fetchall_array {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchall_array(@args) :
     	$sth->SUPER::fetchall_array(@args);
 }
@@ -506,7 +501,7 @@ sub fetchall_array {
 sub fetchall_arrayref {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchall_arrayref(@args) :
     	$sth->SUPER::fetchall_arrayref(@args);
 }
@@ -514,7 +509,7 @@ sub fetchall_arrayref {
 sub fetchall_hashref {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::fetchall_hashref(@args) :
     	$sth->SUPER::fetchall_hashref(@args);
 }
@@ -522,7 +517,7 @@ sub fetchall_hashref {
 sub cancel {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::cancel(@args) :
     	$sth->SUPER::cancel(@args);
 }
@@ -530,7 +525,7 @@ sub cancel {
 sub func {
     my($sth, @args) = @_;
 
-    return $sth->{private_dbix_chart_sth} ? 
+    return $sth->{private_dbix_chart_sth} ?
     	$sth->{private_dbix_chart_sth}{_chart_sth}->SUPER::cancel(@args) :
     	$sth->SUPER::func(@args);
 }
@@ -538,13 +533,13 @@ sub func {
 sub finish {
     my($sth, @args) = @_;
 
-    return $sth->SUPER::finish(@args) 
+    return $sth->SUPER::finish(@args)
     	unless $sth->{private_dbix_chart_sth};
 #
 #	finish each of our subordinate sths
 #
 	my $chartsth = $sth->{private_dbix_chart_sth};
-	$_->SUPER::finish 
+	$_->SUPER::finish
 		foreach (@{$chartsth->{_src_sths}});
 	$_->{_chart_sth}->SUPER::finish
 		if $_->{_chart_sth};
@@ -569,8 +564,47 @@ sub state {
 sub DESTROY { }
 
 1;
+#
+#	added in 0.05 to provide a container for unexecuted
+#	stmt handles w/ their parameters
+#
+package DBIx::Chart::SthContainer;
 
-    __END__
+sub new {
+	my ($class, $sth, @params) = @_;
+
+	return bless [ $sth, @params ], $class;
+}
+
+sub execute {
+	my $self = shift;
+	my $pcnt = $#$self;
+
+#print STDERR "In SthContainer::execute\n";
+	my $sth = $self->[0];
+	my $rc = $sth->execute(@$self[1..$pcnt]);
+	return $rc || $sth->set_err($sth->err, $sth->errstr, $sth->state);
+}
+
+sub num_of_fields { return $_[0]->[0]{NUM_OF_FIELDS}; }
+
+sub finish { return $_[0]->[0]->finish(); }
+
+sub get_metadata {
+	my ($self, $item) = @_;
+	my $t;
+	return eval { $t = $self->[0]->{$item}; };
+}
+
+sub fetchall_arrayref {
+	my $self = shift;
+#print STDERR "In SthContainer::fetchall\n";
+	return $self->[0]->fetchall_arrayref(@_);
+}
+
+1;
+
+=pod
 
 =head1 NAME
 
@@ -622,7 +656,7 @@ DBIx::Chart - DBI extension for Rendering Charts and Graphs
 	#	now render the graph
 	#
 	$row = $dbh->selectrow_arrayref(
-	"select * from 
+	"select * from
 	(select * from dbixtst
 	returning areagraph(x,y1,y2)
 	where colors in ('red','blue')) plot1,
@@ -646,7 +680,7 @@ DBIx::Chart - DBI extension for Rendering Charts and Graphs
 	binmode OUTF;
 	print OUTF $$row[0];
 	close OUTF;
-	
+
 	$dbh->disconnect;
 
 =head1 WARNING
@@ -661,7 +695,7 @@ SQL capable data source with a DBI driver appear to natively
 support charting/graphing.
 
 DBIx::Chart builds on the SQL syntax introduced in DBD::Chart
-to render pie charts, bar charts, box&whisker charts (aka boxcharts), 
+to render pie charts, bar charts, box&whisker charts (aka boxcharts),
 histograms, Gantt charts, and line, point, and area graphs.
 
 For detailed usage information, see the included L<dbixchart.html>
@@ -728,7 +762,7 @@ Assuming the test completes successfully, you should
 use a web browser to view the file t/plottest.html and verify
 the images look reasonable.
 
-If tests succeed, proceed with installation via 
+If tests succeed, proceed with installation via
 
     make install
 
@@ -738,7 +772,7 @@ on installing in your own directories. L<ExtUtils::MakeMaker>.
 
 =head1 FOR MORE INFO
 
-Check out http://www.presicient.com/dbixchart with your 
+Check out http://www.presicient.com/dbixchart with your
 favorite browser.  It includes all the usage information.
 
 =head1 AUTHOR AND COPYRIGHT
@@ -747,7 +781,7 @@ This module is Copyright (C) 2001, 2002 by Presicient Corporation
 
     Email: darnold@presicient.com
 
-You may distribute this module under the terms of the Artistic 
+You may distribute this module under the terms of the Artistic
 License, as specified in the Perl README file.
 
 =head1 SEE ALSO
